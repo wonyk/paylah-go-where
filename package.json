@@ -1,0 +1,16 @@
+{
+  "name": "dbs-paylah-merchant-finder",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && node scripts/prepare-sites-build.mjs",
+    "preview": "vite preview"
+  },
+  "type": "module",
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "pdfjs-dist": "^6.2.108",
+    "vite": "^6.4.2"
+  }
+}

@@ -1,0 +1,12 @@
+__pycache__/
+.venv/
+*.pyc
+# Commit the generated JSON and metadata so GitHub Pages can build from a clone.
+# Keep only the downloadable source PDF out of Git.
+dbs-paylah-merchants.pdf
+public/
+node_modules/
+.next/
+.open-next/
+*.tgz
+dist/
