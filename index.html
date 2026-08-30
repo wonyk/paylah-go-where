@@ -1,688 +1,1089 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DBS PayLah! Merchant Finder</title>
-<style>
-  :root {
-    --bg: #f4f6f9;
-    --card: #ffffff;
-    --panel: #fafbfc;
-    --text: #1f2933;
-    --muted: #6b7a8d;
-    --accent: #e11d48;
-    --accent-dark: #be123c;
-    --border: #e2e8f0;
-    --input-bg: #ffffff;
-    --input-text: #1f2933;
-    --shadow: 0 1px 2px rgba(15, 23, 42, .04);
-    --ok-bg: #f0fdf4; --ok-border: #bbf7d0; --ok-text: #166534;
-    --warn-bg: #fffbeb; --warn-border: #fde68a; --warn-text: #92400e;
-    --err-bg: #fef2f2; --err-border: #fecaca; --err-text: #991b1b;
-  }
-  html[data-theme="dark"] {
-    --bg: #0f172a;
-    --card: #1e293b;
-    --panel: #243247;
-    --text: #e2e8f0;
-    --muted: #94a3b8;
-    --accent: #f43f5e;
-    --accent-dark: #fb7185;
-    --border: #334155;
-    --input-bg: #0f172a;
-    --input-text: #e2e8f0;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
-    --ok-bg: #052e16; --ok-border: #166534; --ok-text: #86efac;
-    --warn-bg: #431407; --warn-border: #92400e; --warn-text: #fcd34d;
-    --err-bg: #450a0a; --err-border: #7f1d1d; --err-text: #fca5a5;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.5;
-    transition: background .2s, color .2s;
-  }
-  header {
-    background: linear-gradient(135deg, #be123c, #e11d48);
-    color: #fff;
-    padding: 28px 24px 24px;
-  }
-  .header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-  header h1 { margin: 0 0 4px; font-size: 1.5rem; }
-  header p { margin: 0; opacity: .9; font-size: .9rem; }
-  .toggles { display: flex; gap: 8px; flex-shrink: 0; }
-  .toggle-btn {
-    background: rgba(255, 255, 255, .18);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, .35);
-    border-radius: 999px;
-    padding: 7px 14px;
-    font-size: .85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background .15s;
-  }
-  .toggle-btn:hover { background: rgba(255, 255, 255, .3); }
-  main { max-width: 860px; margin: 24px auto 60px; padding: 0 16px; }
-  .card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 18px 20px;
-    margin-bottom: 18px;
-    box-shadow: var(--shadow);
-  }
-  .card h2 { margin: 0 0 14px; font-size: 1.05rem; }
-  .status-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
-  }
-  .stat {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 12px;
-  }
-  .stat .label { font-size: .75rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  .stat .value { font-size: 1.05rem; font-weight: 600; margin-top: 4px; word-break: break-all; }
-  .stat .value.hash { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
-  button {
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 18px;
-    font-size: .95rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background .15s;
-  }
-  button:hover { background: var(--accent-dark); }
-  button:disabled { background: #cbd5e1; cursor: not-allowed; }
-  button.secondary { background: #334155; }
-  button.secondary:hover { background: #1e293b; }
-  .hint { font-size: .85rem; color: var(--muted); margin: 0 0 14px; }
-  .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-  .source-grid { display: grid; grid-template-columns: minmax(260px, 2fr) minmax(210px, 1fr); gap: 12px; margin-top: 16px; }
-  .field label { display: block; font-size: .78rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
-  .field input[type="text"], .field input[type="url"], .field input[type="file"] { width: 100%; }
-  .venue-card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 14px;
-    margin: 8px 0;
-  }
-  .venue-title {
-    font-weight: 700;
-    font-size: .95rem;
-    color: var(--accent-dark);
-    margin-bottom: 2px;
-  }
-  .venue-addr { font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
-  .stall { padding: 3px 0; font-size: .9rem; }
-  .stall .u { color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; }
-  .lone { padding: 6px 0; font-size: .9rem; }
-  .lone .u { color: var(--muted); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; }
-  input[type="text"], input[type="url"], input[type="file"] {
-    flex: 1;
-    min-width: 200px;
-    padding: 10px 12px;
-    font-size: .95rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--input-bg);
-    color: var(--input-text);
-  }
-  input[type="checkbox"] { accent-color: var(--accent); }
-  input[type="file"] { font-size: .82rem; }
-  @media (max-width: 640px) { .source-grid { grid-template-columns: 1fr; } }
-  label.check { display: inline-flex; gap: 6px; align-items: center; font-size: .9rem; color: var(--muted); }
-  .msg {
-    margin-top: 12px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: .9rem;
-    display: none;
-  }
-  .msg.show { display: block; }
-  .msg.ok { background: var(--ok-bg); border: 1px solid var(--ok-border); color: var(--ok-text); }
-  .msg.warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); }
-  .msg.err { background: var(--err-bg); border: 1px solid var(--err-border); color: var(--err-text); }
-  .summary { font-size: .9rem; color: var(--muted); margin-bottom: 14px; }
-  .group { margin-bottom: 16px; }
-  .group-title {
-    font-size: .78rem;
-    text-transform: uppercase;
-    letter-spacing: .05em;
-    color: var(--accent);
-    font-weight: 700;
-    margin-bottom: 6px;
-  }
-  table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
-  th { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; }
-  td.name { font-weight: 600; }
-  td.unit { white-space: nowrap; color: var(--muted); }
-  td.addr { color: var(--muted); }
-  .empty { text-align: center; color: var(--muted); padding: 28px 0; }
-  .spinner {
-    display: none;
-    width: 16px; height: 16px;
-    border: 2px solid #fff;
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin .7s linear infinite;
-    vertical-align: middle;
-  }
-  button.loading .spinner { display: inline-block; margin-right: 8px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .foot { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 24px; }
-</style>
-</head>
-<body>
-<header>
-  <div class="header-row">
-    <div>
-      <h1 data-i18n="title">DBS PayLah! Saturdays — Merchant Finder</h1>
-      <p data-i18n="subtitle">Participating merchants &amp; stalls indexed from the official PDF, searchable by Singapore postal code.</p>
-    </div>
-    <div class="toggles">
-      <button class="toggle-btn" id="btnLang">中文</button>
-      <button class="toggle-btn" id="btnTheme">🌙</button>
-    </div>
-  </div>
-</header>
-
-<main>
-  <div class="card" id="statusCard">
-    <h2 data-i18n="indexStatus">Index Status</h2>
-    <div class="status-grid" id="statusGrid">
-      <div class="stat"><div class="label" data-i18n="pdfFile">PDF File</div><div class="value" id="stPdf">—</div></div>
-      <div class="stat"><div class="label" data-i18n="records">Records</div><div class="value" id="stRecords">—</div></div>
-      <div class="stat"><div class="label" data-i18n="indexedAt">Indexed At</div><div class="value" id="stTime">—</div></div>
-      <div class="stat"><div class="label" data-i18n="pdfHash">PDF sha256</div><div class="value hash" id="stHash">—</div></div>
-    </div>
-    <div class="source-grid" id="sourceGrid">
-      <div class="field">
-        <label for="pdfSourceUrl" data-i18n="pdfSource">PDF source URL</label>
-        <input type="url" id="pdfSourceUrl" spellcheck="false" autocomplete="off">
-      </div>
-      <div class="field">
-        <label for="pdfUpload" data-i18n="pdfUpload">Or upload a PDF</label>
-        <input type="file" id="pdfUpload" accept="application/pdf,.pdf">
-      </div>
-    </div>
-    <div class="row" style="margin-top:16px" id="reindexRow">
-      <button id="btnReindex" data-i18n="reindex">Re-index from PDF</button>
-      <label class="check"><input type="checkbox" id="forceReindex"> <span data-i18n="forceReparse">Force re-parse</span></label>
-      <span class="msg" id="reindexMsg"></span>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2 data-i18n="filter">Filter</h2>
-    <p class="hint" data-i18n="hint">Fill in any combination of fields — empty fields are ignored, filled fields are combined (AND).</p>
-    <form id="searchForm">
-      <div class="filter-grid">
-        <div class="field">
-          <label data-i18n="postal" for="fPostal">Postal Code</label>
-          <input type="text" id="fPostal" placeholder="e.g. 730888" autocomplete="off" inputmode="numeric" maxlength="6" data-i18n-ph="postalPh">
-        </div>
-        <div class="field">
-          <label data-i18n="name" for="fName">Shop / Stall Name</label>
-          <input type="text" id="fName" placeholder="e.g. Bai Sheng Food Court" autocomplete="off" data-i18n-ph="namePh">
-        </div>
-        <div class="field">
-          <label data-i18n="address" for="fAddress">Address</label>
-          <input type="text" id="fAddress" placeholder="e.g. Woodlands Drive 50" autocomplete="off" data-i18n-ph="addressPh">
-        </div>
-      </div>
-      <div class="row" style="margin-top:14px">
-        <button type="submit" id="btnSearch" data-i18n="search">Search</button>
-        <button type="button" class="secondary" id="btnClear" data-i18n="clear">Clear</button>
-        <label class="check"><input type="checkbox" id="wholeWordChk"> <span data-i18n="wholeWord">Whole word only</span></label>
-      </div>
-    </form>
-    <div class="msg" id="searchMsg"></div>
-    <div id="results" style="margin-top:14px"></div>
-  </div>
-
-  <div class="foot">Source: <span id="srcUrl"></span></div>
-</main>
-
-<script type="module" src="/refresh-pdf.js"></script>
-<script>
-const $ = (id) => document.getElementById(id);
-const srcUrl = "https://www.dbs.com.sg/iwov-resources/media/pdf/deposits/promotions/paylah/saturdays/dbs-paylah-saturdays-participating-merchants.pdf";
-
-// ---------- i18n ----------
-const I18N = {
-  en: {
-    title: "DBS PayLah! Saturdays — Merchant Finder",
-    subtitle: "Participating merchants & stalls indexed from the official PDF, searchable by Singapore postal code.",
-    indexStatus: "Index Status",
-    pdfFile: "PDF File", records: "Records", indexedAt: "Indexed At", pdfHash: "PDF sha256",
-    reindex: "Re-index from PDF", forceReparse: "Force re-parse",
-    pdfSource: "PDF source URL", pdfUpload: "Or upload a PDF",
-    reindexing: "Re-indexing…", reindexFailed: "Re-index failed: ",
-    filter: "Filter",
-    hint: "Fill in any combination of fields — empty fields are ignored, filled fields are combined (AND). Substring matching is the default; whole-word matches are listed first. Tick \u201cWhole word only\u201d to restrict to exact words.",
-    postal: "Postal Code", name: "Shop / Stall Name", address: "Address",
-    postalPh: "e.g. 730888", namePh: "e.g. Bai Sheng Food Court", addressPh: "e.g. Woodlands Drive 50",
-    search: "Search", clear: "Clear", searching: "Searching…",
-    contains: "Contains (substring)",
-    wholeWord: "Whole word only",
-    noResults: "No merchants or stalls found for the given filters.",
-    recordsFound: "merchant/stall record(s) found.",
-    needOne: "Please fill in at least one field.",
-    postalErr: "Postal code must be 6 digits.",
-    minLenErr: "Name / address must be at least 2 characters.",
-    searchFailed: "Search failed: ",
-    notDownloaded: "not downloaded", indexed: "indexed", never: "never", error: "error", offline: "Offline",
-    staticNote: "Static build — re-indexing is disabled. Data was generated offline.",
-    cat: {
-      heartland: "Heartland Merchants",
-      coffeeshops: "Coffeeshops",
-      hawker_centres: "Hawker Centres",
-      wet_markets: "Wet Markets",
-      industrial_canteens: "Industrial Canteens",
-    },
-    thName: "Name", thUnit: "Unit", thAddress: "Address",
-    source: "Source: ",
-  },
-  zh: {
-    title: "星展银行 PayLah! 周六 — 商户查询",
-    subtitle: "从官方 PDF 索引的参与商户及摊位，可按新加坡邮区编号搜索。",
-    indexStatus: "索引状态",
-    pdfFile: "PDF 文件", records: "记录数", indexedAt: "索引时间", pdfHash: "PDF 校验值",
-    reindex: "从 PDF 重新索引", forceReparse: "强制重新解析",
-    pdfSource: "PDF 来源网址", pdfUpload: "或上传 PDF",
-    reindexing: "正在重新索引…", reindexFailed: "重新索引失败：",
-    filter: "筛选",
-    hint: "可填写任意组合的字段 — 留空的字段会被忽略，已填写的字段按「且」(AND) 合并。默认使用子字符串匹配，完整单词匹配结果排在最前。勾选「仅限完整单词」可只匹配精确单词。",
-    postal: "邮区编号", name: "店铺 / 摊位名称", address: "地址",
-    postalPh: "例如 730888", namePh: "例如 Bai Sheng Food Court", addressPh: "例如 Woodlands Drive 50",
-    search: "搜索", clear: "清除", searching: "搜索中…",
-    contains: "包含（子字符串）",
-    wholeWord: "仅限完整单词",
-    noResults: "未找到符合筛选条件的商户或摊位。",
-    recordsFound: "条商户 / 摊位记录。",
-    needOne: "请至少填写一个字段。",
-    postalErr: "邮区编号必须是 6 位数字。",
-    minLenErr: "名称 / 地址至少需要 2 个字符。",
-    searchFailed: "搜索失败：",
-    notDownloaded: "未下载", indexed: "已索引", never: "从未", error: "错误", offline: "离线",
-    staticNote: "静态版 — 已禁用重新索引。数据为离线生成。",
-    cat: {
-      heartland: "邻里商户",
-      coffeeshops: "咖啡店",
-      hawker_centres: "小贩中心",
-      wet_markets: "湿巴刹",
-      industrial_canteens: "工业食堂",
-    },
-    thName: "名称", thUnit: "单位", thAddress: "地址",
-    source: "来源：",
-  },
-};
-let lang = localStorage.getItem("paylah_lang") || "en";
-let theme = localStorage.getItem("paylah_theme") || "dark";
-let mode = "api";        // "api" when served by server.py, "static" for static hosting
-let STATIC_DATA = null;  // loaded merchant records for static mode
-let STATIC_META = null;
-
-function tr(key) {
-  const l = I18N[lang] || I18N.en;
-  const parts = key.split(".");
-  let v = l;
-  for (const p of parts) v = v && v[p];
-  return v !== undefined ? v : key;
-}
-
-function applyLang() {
-  document.documentElement.lang = lang;
-  document.querySelectorAll("[data-i18n]").forEach((el) => {
-    el.textContent = tr(el.getAttribute("data-i18n"));
-  });
-  document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
-    el.setAttribute("placeholder", tr(el.getAttribute("data-i18n-ph")));
-  });
-  $("btnLang").textContent = lang === "zh" ? "English" : "中文";
-}
-
-function applyTheme() {
-  document.documentElement.setAttribute("data-theme", theme);
-  $("btnTheme").textContent = theme === "dark" ? "☀️" : "🌙";
-}
-
-$("btnLang").addEventListener("click", () => {
-  lang = lang === "zh" ? "en" : "zh";
-  localStorage.setItem("paylah_lang", lang);
-  applyLang();
-  refreshStatus(); // refresh dynamic labels
-});
-$("btnTheme").addEventListener("click", () => {
-  theme = theme === "dark" ? "light" : "dark";
-  localStorage.setItem("paylah_theme", theme);
-  applyTheme();
-});
-
-function setMsg(el, text, kind) {
-  el.textContent = text;
-  el.className = "msg show " + kind;
-}
-function clearMsg(el) { el.className = "msg"; }
-
-function fmtTime(ts) {
-  if (!ts) return tr("never");
-  return new Date(ts * 1000).toLocaleString(lang === "zh" ? "zh-CN" : "en-GB");
-}
-function fmtBytes(n) {
-  if (n == null) return "—";
-  return (n / 1024 / 1024).toFixed(1) + " MB";
-}
-
-async function refreshStatus() {
-  if (mode === "static") {
-    $("stPdf").textContent = tr("offline");
-    $("stRecords").textContent = STATIC_DATA ? STATIC_DATA.length.toLocaleString() : "—";
-    $("stTime").textContent = fmtTime(STATIC_META && STATIC_META.indexed_at);
-    $("stHash").textContent = "—";
-    $("reindexRow").style.display = "none";
-    $("sourceGrid").style.display = "none";
-    return;
-  }
-  try {
-    const r = await fetch("/api/status");
-    const s = await r.json();
-    $("stPdf").textContent = s.bundled_fallback ? tr("offline") : (s.pdf_exists ? fmtBytes(s.pdf_bytes) + " (" + tr("indexed") + ")" : tr("notDownloaded"));
-    $("stRecords").textContent = s.record_count != null ? s.record_count.toLocaleString() : "—";
-    $("stTime").textContent = fmtTime(s.indexed_at);
-    $("stHash").textContent = s.pdf_hash ? s.pdf_hash.slice(0, 16) + "…" : "—";
-    $("stHash").title = s.pdf_hash || "";
-    if (s.source_url && document.activeElement !== $("pdfSourceUrl")) $("pdfSourceUrl").value = s.source_url;
-    if (s.source_url) {
-      $("srcUrl").textContent = s.source_url;
-      $("srcUrl").title = s.source_url;
-    }
-    $("reindexRow").style.display = "";
-    $("sourceGrid").style.display = "grid";
-  } catch (e) {
-    $("stPdf").textContent = tr("error");
-  }
-}
-
-async function reindex() {
-  const btn = $("btnReindex");
-  const force = $("forceReindex").checked;
-  const file = $("pdfUpload").files[0] || null;
-  const url = $("pdfSourceUrl").value.trim() || srcUrl;
-  const msg = $("reindexMsg");
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>' + tr("reindexing");
-  clearMsg(msg);
-  try {
-    if (mode === "static") throw new Error("Database refresh is unavailable on this host");
-    let d;
-    if (typeof window.refreshPdfIndex === "function") {
-      d = await window.refreshPdfIndex({ file, url, force, onProgress: (text) => setMsg(msg, text, "warn") });
-    } else {
-      const response = await fetch("/api/reindex?force=" + (force ? 1 : 0), { method: "POST" });
-      d = await response.json();
-      if (!response.ok || d.error) throw new Error(d.error || `Request failed (${response.status})`);
-    }
-    setMsg(msg, d.message, d.changed ? "ok" : "warn");
-    if (d.changed) {
-      setMsg(msg, d.message + " " + tr("records") + ": " + d.record_count.toLocaleString() + ".", "ok");
-      $("pdfUpload").value = "";
-    }
-  } catch (e) {
-    setMsg(msg, tr("reindexFailed") + e.message, "err");
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = tr("reindex");
-    refreshStatus();
-  }
-}
-
-function escapeHtml(s) {
-  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-  })[c]);
-}
-
-function renderResults(d) {
-  const box = $("results");
-  const msg = $("searchMsg");
-  if (d.error) {
-    setMsg(msg, d.error, "err");
-    box.innerHTML = "";
-    return;
-  }
-  if (d.count === 0) {
-    clearMsg(msg);
-    box.innerHTML = '<div class="empty">' + tr("noResults") + "</div>";
-    return;
-  }
-  clearMsg(msg);
-
-  let html = '<div class="summary">' + d.count.toLocaleString() + " " + tr("recordsFound") + "</div>";
-
-  // Group by category, then by venue.
-  const byCat = {};
-  for (const rec of d.results) {
-    (byCat[rec.category] = byCat[rec.category] || []).push(rec);
-  }
-  const cats = Object.keys(byCat).sort();
-
-  for (const cat of cats) {
-    const recs = byCat[cat].slice();
-    const catName = tr("cat." + cat) || cat;
-    html += '<div class="group"><div class="group-title">' + escapeHtml(catName) + " (" + recs.length + ")</div>";
-
-    // Preserve the search ranking (whole-word first); stable-sort venues to
-    // the top of each category without disturbing the ranked order.
-    const venues = recs.filter((r) => r.kind === "venue");
-    const others = recs.filter((r) => r.kind !== "venue");
-
-    if (cat === "heartland" || venues.length === 0) {
-      html += '<table><thead><tr><th>' + tr("thName") + "</th><th>" + tr("thUnit") + "</th><th>" + tr("thAddress") + "</th></tr></thead><tbody>";
-      for (const rec of others) {
-        html += "<tr><td class='name'>" + escapeHtml(rec.name) + "</td>" +
-                "<td class='unit'>" + escapeHtml(rec.unit || "") + "</td>" +
-                "<td class='addr'>" + escapeHtml(rec.address || "") + "</td></tr>";
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DBS PayLah! Merchant Finder</title>
+    <style>
+      :root {
+        --bg: #f4f6f9;
+        --card: #ffffff;
+        --panel: #fafbfc;
+        --text: #1f2933;
+        --muted: #6b7a8d;
+        --accent: #e11d48;
+        --accent-dark: #be123c;
+        --border: #e2e8f0;
+        --input-bg: #ffffff;
+        --input-text: #1f2933;
+        --shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        --ok-bg: #f0fdf4;
+        --ok-border: #bbf7d0;
+        --ok-text: #166534;
+        --warn-bg: #fffbeb;
+        --warn-border: #fde68a;
+        --warn-text: #92400e;
+        --err-bg: #fef2f2;
+        --err-border: #fecaca;
+        --err-text: #991b1b;
       }
-      html += "</tbody></table>";
-    } else {
-      for (const v of venues) {
-        const key = v.name;
-        const stalls = others.filter((o) => o.venue === key);
-        html += '<div class="venue-card">';
-        html += '<div class="venue-title">' + escapeHtml(v.name) + "</div>";
-        html += '<div class="venue-addr">' + escapeHtml(v.address || "") + " &middot; " + escapeHtml(v.postal_code || "") + "</div>";
-        if (stalls.length) {
-          html += '<div class="stalls">';
-          for (const s of stalls) {
-            html += '<div class="stall"><span>' + escapeHtml(s.name) + "</span> " +
-                    (s.unit ? '<span class="u">' + escapeHtml(s.unit) + "</span>" : "") + "</div>";
+      html[data-theme="dark"] {
+        --bg: #0f172a;
+        --card: #1e293b;
+        --panel: #243247;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --accent: #f43f5e;
+        --accent-dark: #fb7185;
+        --border: #334155;
+        --input-bg: #0f172a;
+        --input-text: #e2e8f0;
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+        --ok-bg: #052e16;
+        --ok-border: #166534;
+        --ok-text: #86efac;
+        --warn-bg: #431407;
+        --warn-border: #92400e;
+        --warn-text: #fcd34d;
+        --err-bg: #450a0a;
+        --err-border: #7f1d1d;
+        --err-text: #fca5a5;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      header {
+        background: linear-gradient(135deg, #be123c, #e11d48);
+        color: #fff;
+        padding: 28px 24px 24px;
+      }
+      .header-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+      header h1 {
+        margin: 0 0 4px;
+        font-size: 1.5rem;
+      }
+      header p {
+        margin: 0;
+        opacity: 0.9;
+        font-size: 0.9rem;
+      }
+      .toggles {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+      }
+      .toggle-btn {
+        background: rgba(255, 255, 255, 0.18);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 999px;
+        padding: 7px 14px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .toggle-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+      main {
+        max-width: 860px;
+        margin: 24px auto 60px;
+        padding: 0 16px;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px 20px;
+        margin-bottom: 18px;
+        box-shadow: var(--shadow);
+      }
+      .card h2 {
+        margin: 0 0 14px;
+        font-size: 1.05rem;
+      }
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+      }
+      .stat {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+      }
+      .stat .label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .stat .value {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin-top: 4px;
+        word-break: break-all;
+      }
+      .stat .value.hash {
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.8rem;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      button {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 18px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      button:hover {
+        background: var(--accent-dark);
+      }
+      button:disabled {
+        background: #cbd5e1;
+        cursor: not-allowed;
+      }
+      button.secondary {
+        background: #334155;
+      }
+      button.secondary:hover {
+        background: #1e293b;
+      }
+      .hint {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin: 0 0 14px;
+      }
+      .filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .source-grid {
+        display: grid;
+        grid-template-columns: minmax(260px, 2fr) minmax(210px, 1fr);
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .field label {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+      .field input[type="text"],
+      .field input[type="url"],
+      .field input[type="file"] {
+        width: 100%;
+      }
+      .venue-card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 14px;
+        margin: 8px 0;
+      }
+      .venue-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: var(--accent-dark);
+        margin-bottom: 2px;
+      }
+      .venue-addr {
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-bottom: 6px;
+      }
+      .stall {
+        padding: 3px 0;
+        font-size: 0.9rem;
+      }
+      .stall .u {
+        color: var(--muted);
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.8rem;
+      }
+      .lone {
+        padding: 6px 0;
+        font-size: 0.9rem;
+      }
+      .lone .u {
+        color: var(--muted);
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.8rem;
+      }
+      input[type="text"],
+      input[type="url"],
+      input[type="file"] {
+        flex: 1;
+        min-width: 200px;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--input-bg);
+        color: var(--input-text);
+      }
+      input[type="checkbox"] {
+        accent-color: var(--accent);
+      }
+      input[type="file"] {
+        font-size: 0.82rem;
+      }
+      @media (max-width: 640px) {
+        .source-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      label.check {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+      .msg {
+        margin-top: 12px;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        display: none;
+      }
+      .msg.show {
+        display: block;
+      }
+      .msg.ok {
+        background: var(--ok-bg);
+        border: 1px solid var(--ok-border);
+        color: var(--ok-text);
+      }
+      .msg.warn {
+        background: var(--warn-bg);
+        border: 1px solid var(--warn-border);
+        color: var(--warn-text);
+      }
+      .msg.err {
+        background: var(--err-bg);
+        border: 1px solid var(--err-border);
+        color: var(--err-text);
+      }
+      .summary {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 14px;
+      }
+      .group {
+        margin-bottom: 16px;
+      }
+      .group-title {
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--accent);
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 7px 10px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+      }
+      th {
+        color: var(--muted);
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+      td.name {
+        font-weight: 600;
+      }
+      td.unit {
+        white-space: nowrap;
+        color: var(--muted);
+      }
+      td.addr {
+        color: var(--muted);
+      }
+      .empty {
+        text-align: center;
+        color: var(--muted);
+        padding: 28px 0;
+      }
+      .spinner {
+        display: none;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+        vertical-align: middle;
+      }
+      button.loading .spinner {
+        display: inline-block;
+        margin-right: 8px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .foot {
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.8rem;
+        margin-top: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="header-row">
+        <div>
+          <h1 data-i18n="title">DBS PayLah! Saturdays — Merchant Finder</h1>
+          <p data-i18n="subtitle">
+            Participating merchants &amp; stalls indexed from the official PDF,
+            searchable by Singapore postal code.
+          </p>
+        </div>
+        <div class="toggles">
+          <button class="toggle-btn" id="btnLang">中文</button>
+          <button class="toggle-btn" id="btnTheme">🌙</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div class="card" id="statusCard">
+        <h2 data-i18n="indexStatus">Index Status</h2>
+        <div class="status-grid" id="statusGrid">
+          <div class="stat">
+            <div class="label" data-i18n="pdfFile">PDF File</div>
+            <div class="value" id="stPdf">—</div>
+          </div>
+          <div class="stat">
+            <div class="label" data-i18n="records">Records</div>
+            <div class="value" id="stRecords">—</div>
+          </div>
+          <div class="stat">
+            <div class="label" data-i18n="indexedAt">Indexed At</div>
+            <div class="value" id="stTime">—</div>
+          </div>
+          <div class="stat">
+            <div class="label" data-i18n="pdfHash">PDF sha256</div>
+            <div class="value hash" id="stHash">—</div>
+          </div>
+        </div>
+        <div class="source-grid" id="sourceGrid">
+          <div class="field">
+            <label for="pdfSourceUrl" data-i18n="pdfSource"
+              >PDF source URL</label
+            >
+            <input
+              type="url"
+              id="pdfSourceUrl"
+              spellcheck="false"
+              autocomplete="off"
+            />
+          </div>
+          <div class="field">
+            <label for="pdfUpload" data-i18n="pdfUpload">Or upload a PDF</label>
+            <input type="file" id="pdfUpload" accept="application/pdf,.pdf" />
+          </div>
+        </div>
+        <div class="row" style="margin-top: 16px" id="reindexRow">
+          <button id="btnReindex" data-i18n="reindex">Re-index from PDF</button>
+          <label class="check"
+            ><input type="checkbox" id="forceReindex" />
+            <span data-i18n="forceReparse">Force re-parse</span></label
+          >
+          <span class="msg" id="reindexMsg"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 data-i18n="filter">Filter</h2>
+        <p class="hint" data-i18n="hint">
+          Fill in any combination of fields — empty fields are ignored, filled
+          fields are combined (AND).
+        </p>
+        <form id="searchForm">
+          <div class="filter-grid">
+            <div class="field">
+              <label data-i18n="postal" for="fPostal">Postal Code</label>
+              <input
+                type="text"
+                id="fPostal"
+                placeholder="e.g. 730888"
+                autocomplete="off"
+                inputmode="numeric"
+                maxlength="6"
+                data-i18n-ph="postalPh"
+              />
+            </div>
+            <div class="field">
+              <label data-i18n="name" for="fName">Shop / Stall Name</label>
+              <input
+                type="text"
+                id="fName"
+                placeholder="e.g. Bai Sheng Food Court"
+                autocomplete="off"
+                data-i18n-ph="namePh"
+              />
+            </div>
+            <div class="field">
+              <label data-i18n="address" for="fAddress">Address</label>
+              <input
+                type="text"
+                id="fAddress"
+                placeholder="e.g. Woodlands Drive 50"
+                autocomplete="off"
+                data-i18n-ph="addressPh"
+              />
+            </div>
+          </div>
+          <div class="row" style="margin-top: 14px">
+            <button type="submit" id="btnSearch" data-i18n="search">
+              Search
+            </button>
+            <button
+              type="button"
+              class="secondary"
+              id="btnClear"
+              data-i18n="clear"
+            >
+              Clear
+            </button>
+            <label class="check"
+              ><input type="checkbox" id="wholeWordChk" />
+              <span data-i18n="wholeWord">Whole word only</span></label
+            >
+          </div>
+        </form>
+        <div class="msg" id="searchMsg"></div>
+        <div id="results" style="margin-top: 14px"></div>
+      </div>
+
+      <div class="foot">Source: <span id="srcUrl"></span></div>
+    </main>
+
+    <script type="module" src="/refresh-pdf.js"></script>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const srcUrl =
+        "https://www.dbs.com.sg/iwov-resources/media/pdf/deposits/promotions/paylah/saturdays/dbs-paylah-saturdays-participating-merchants.pdf";
+
+      // ---------- i18n ----------
+      const I18N = {
+        en: {
+          title: "DBS PayLah! Saturdays — Merchant Finder",
+          subtitle:
+            "Participating merchants & stalls indexed from the official PDF, searchable by Singapore postal code.",
+          indexStatus: "Index Status",
+          pdfFile: "PDF File",
+          records: "Records",
+          indexedAt: "Indexed At",
+          pdfHash: "PDF sha256",
+          reindex: "Re-index from PDF",
+          forceReparse: "Force re-parse",
+          pdfSource: "PDF source URL",
+          pdfUpload: "Or upload a PDF",
+          reindexing: "Re-indexing…",
+          reindexFailed: "Re-index failed: ",
+          filter: "Filter",
+          hint: "Fill in any combination of fields — empty fields are ignored, filled fields are combined (AND). Substring matching is the default; whole-word matches are listed first. Tick \u201cWhole word only\u201d to restrict to exact words.",
+          postal: "Postal Code",
+          name: "Shop / Stall Name",
+          address: "Address",
+          postalPh: "e.g. 730888",
+          namePh: "e.g. Bai Sheng Food Court",
+          addressPh: "e.g. Woodlands Drive 50",
+          search: "Search",
+          clear: "Clear",
+          searching: "Searching…",
+          contains: "Contains (substring)",
+          wholeWord: "Whole word only",
+          noResults: "No merchants or stalls found for the given filters.",
+          recordsFound: "merchant/stall record(s) found.",
+          needOne: "Please fill in at least one field.",
+          postalErr: "Postal code must be 6 digits.",
+          minLenErr: "Name / address must be at least 2 characters.",
+          searchFailed: "Search failed: ",
+          notDownloaded: "not downloaded",
+          indexed: "indexed",
+          never: "never",
+          error: "error",
+          offline: "Offline",
+          staticNote:
+            "Static build — re-indexing is disabled. Data was generated offline.",
+          cat: {
+            heartland: "Heartland Merchants",
+            coffeeshops: "Coffeeshops",
+            hawker_centres: "Hawker Centres",
+            wet_markets: "Wet Markets",
+            industrial_canteens: "Industrial Canteens",
+          },
+          thName: "Name",
+          thUnit: "Unit",
+          thAddress: "Address",
+          source: "Source: ",
+        },
+        zh: {
+          title: "星展银行 PayLah! 周六 — 商户查询",
+          subtitle: "从官方 PDF 索引的参与商户及摊位，可按新加坡邮区编号搜索。",
+          indexStatus: "索引状态",
+          pdfFile: "PDF 文件",
+          records: "记录数",
+          indexedAt: "索引时间",
+          pdfHash: "PDF 校验值",
+          reindex: "从 PDF 重新索引",
+          forceReparse: "强制重新解析",
+          pdfSource: "PDF 来源网址",
+          pdfUpload: "或上传 PDF",
+          reindexing: "正在重新索引…",
+          reindexFailed: "重新索引失败：",
+          filter: "筛选",
+          hint: "可填写任意组合的字段 — 留空的字段会被忽略，已填写的字段按「且」(AND) 合并。默认使用子字符串匹配，完整单词匹配结果排在最前。勾选「仅限完整单词」可只匹配精确单词。",
+          postal: "邮区编号",
+          name: "店铺 / 摊位名称",
+          address: "地址",
+          postalPh: "例如 730888",
+          namePh: "例如 Bai Sheng Food Court",
+          addressPh: "例如 Woodlands Drive 50",
+          search: "搜索",
+          clear: "清除",
+          searching: "搜索中…",
+          contains: "包含（子字符串）",
+          wholeWord: "仅限完整单词",
+          noResults: "未找到符合筛选条件的商户或摊位。",
+          recordsFound: "条商户 / 摊位记录。",
+          needOne: "请至少填写一个字段。",
+          postalErr: "邮区编号必须是 6 位数字。",
+          minLenErr: "名称 / 地址至少需要 2 个字符。",
+          searchFailed: "搜索失败：",
+          notDownloaded: "未下载",
+          indexed: "已索引",
+          never: "从未",
+          error: "错误",
+          offline: "离线",
+          staticNote: "静态版 — 已禁用重新索引。数据为离线生成。",
+          cat: {
+            heartland: "邻里商户",
+            coffeeshops: "咖啡店",
+            hawker_centres: "小贩中心",
+            wet_markets: "湿巴刹",
+            industrial_canteens: "工业食堂",
+          },
+          thName: "名称",
+          thUnit: "单位",
+          thAddress: "地址",
+          source: "来源：",
+        },
+      };
+      let lang = localStorage.getItem("paylah_lang") || "en";
+      let theme = localStorage.getItem("paylah_theme") || "dark";
+      let mode = "api"; // "api" when served by server.py, "static" for static hosting
+      let STATIC_DATA = null; // loaded merchant records for static mode
+      let STATIC_META = null;
+
+      function tr(key) {
+        const l = I18N[lang] || I18N.en;
+        const parts = key.split(".");
+        let v = l;
+        for (const p of parts) v = v && v[p];
+        return v !== undefined ? v : key;
+      }
+
+      function applyLang() {
+        document.documentElement.lang = lang;
+        document.querySelectorAll("[data-i18n]").forEach((el) => {
+          el.textContent = tr(el.getAttribute("data-i18n"));
+        });
+        document.querySelectorAll("[data-i18n-ph]").forEach((el) => {
+          el.setAttribute("placeholder", tr(el.getAttribute("data-i18n-ph")));
+        });
+        $("btnLang").textContent = lang === "zh" ? "English" : "中文";
+      }
+
+      function applyTheme() {
+        document.documentElement.setAttribute("data-theme", theme);
+        $("btnTheme").textContent = theme === "dark" ? "☀️" : "🌙";
+      }
+
+      $("btnLang").addEventListener("click", () => {
+        lang = lang === "zh" ? "en" : "zh";
+        localStorage.setItem("paylah_lang", lang);
+        applyLang();
+        refreshStatus(); // refresh dynamic labels
+      });
+      $("btnTheme").addEventListener("click", () => {
+        theme = theme === "dark" ? "light" : "dark";
+        localStorage.setItem("paylah_theme", theme);
+        applyTheme();
+      });
+
+      function setMsg(el, text, kind) {
+        el.textContent = text;
+        el.className = "msg show " + kind;
+      }
+      function clearMsg(el) {
+        el.className = "msg";
+      }
+
+      function fmtTime(ts) {
+        if (!ts) return tr("never");
+        return new Date(ts * 1000).toLocaleString(
+          lang === "zh" ? "zh-CN" : "en-GB",
+        );
+      }
+      function fmtBytes(n) {
+        if (n == null) return "—";
+        return (n / 1024 / 1024).toFixed(1) + " MB";
+      }
+
+      async function refreshStatus() {
+        if (mode === "static") {
+          $("stPdf").textContent = tr("offline");
+          $("stRecords").textContent = STATIC_DATA
+            ? STATIC_DATA.length.toLocaleString()
+            : "—";
+          $("stTime").textContent = fmtTime(
+            STATIC_META && STATIC_META.indexed_at,
+          );
+          $("stHash").textContent = "—";
+          $("reindexRow").style.display = "none";
+          $("sourceGrid").style.display = "none";
+          return;
+        }
+        try {
+          const r = await fetch("/api/status");
+          const s = await r.json();
+          $("stPdf").textContent = s.bundled_fallback
+            ? tr("offline")
+            : s.pdf_exists
+              ? fmtBytes(s.pdf_bytes) + " (" + tr("indexed") + ")"
+              : tr("notDownloaded");
+          $("stRecords").textContent =
+            s.record_count != null ? s.record_count.toLocaleString() : "—";
+          $("stTime").textContent = fmtTime(s.indexed_at);
+          $("stHash").textContent = s.pdf_hash
+            ? s.pdf_hash.slice(0, 16) + "…"
+            : "—";
+          $("stHash").title = s.pdf_hash || "";
+          if (s.source_url && document.activeElement !== $("pdfSourceUrl"))
+            $("pdfSourceUrl").value = s.source_url;
+          if (s.source_url) {
+            $("srcUrl").textContent = s.source_url;
+            $("srcUrl").title = s.source_url;
+          }
+          $("reindexRow").style.display = "";
+          $("sourceGrid").style.display = "grid";
+        } catch (e) {
+          $("stPdf").textContent = tr("error");
+        }
+      }
+
+      async function reindex() {
+        const btn = $("btnReindex");
+        const force = $("forceReindex").checked;
+        const file = $("pdfUpload").files[0] || null;
+        const url = $("pdfSourceUrl").value.trim() || srcUrl;
+        const msg = $("reindexMsg");
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>' + tr("reindexing");
+        clearMsg(msg);
+        try {
+          if (mode === "static")
+            throw new Error("Database refresh is unavailable on this host");
+          let d;
+          if (typeof window.refreshPdfIndex === "function") {
+            d = await window.refreshPdfIndex({
+              file,
+              url,
+              force,
+              onProgress: (text) => setMsg(msg, text, "warn"),
+            });
+          } else {
+            const response = await fetch(
+              "/api/reindex?force=" + (force ? 1 : 0),
+              { method: "POST" },
+            );
+            d = await response.json();
+            if (!response.ok || d.error)
+              throw new Error(d.error || `Request failed (${response.status})`);
+          }
+          setMsg(msg, d.message, d.changed ? "ok" : "warn");
+          if (d.changed) {
+            setMsg(
+              msg,
+              d.message +
+                " " +
+                tr("records") +
+                ": " +
+                d.record_count.toLocaleString() +
+                ".",
+              "ok",
+            );
+            $("pdfUpload").value = "";
+          }
+        } catch (e) {
+          setMsg(msg, tr("reindexFailed") + e.message, "err");
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = tr("reindex");
+          refreshStatus();
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s == null ? "" : s).replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      }
+
+      function renderResults(d) {
+        const box = $("results");
+        const msg = $("searchMsg");
+        if (d.error) {
+          setMsg(msg, d.error, "err");
+          box.innerHTML = "";
+          return;
+        }
+        if (d.count === 0) {
+          clearMsg(msg);
+          box.innerHTML = '<div class="empty">' + tr("noResults") + "</div>";
+          return;
+        }
+        clearMsg(msg);
+
+        let html =
+          '<div class="summary">' +
+          d.count.toLocaleString() +
+          " " +
+          tr("recordsFound") +
+          "</div>";
+
+        // Group by category, then by venue.
+        const byCat = {};
+        for (const rec of d.results) {
+          (byCat[rec.category] = byCat[rec.category] || []).push(rec);
+        }
+        const cats = Object.keys(byCat).sort();
+
+        for (const cat of cats) {
+          const recs = byCat[cat].slice();
+          const catName = tr("cat." + cat) || cat;
+
+          // Preserve the search ranking (whole-word first); stable-sort venues to
+          // the top of each category without disturbing the ranked order.
+          const venues = recs.filter((r) => r.kind === "venue");
+          const others = recs.filter((r) => r.kind !== "venue");
+          const categoryCount = venues.length || others.length;
+          html +=
+            '<div class="group"><div class="group-title">' +
+            escapeHtml(catName) +
+            " (" +
+            categoryCount +
+            ")</div>";
+
+          if (cat === "heartland" || venues.length === 0) {
+            html +=
+              "<table><thead><tr><th>" +
+              tr("thName") +
+              "</th><th>" +
+              tr("thUnit") +
+              "</th><th>" +
+              tr("thAddress") +
+              "</th></tr></thead><tbody>";
+            for (const rec of others) {
+              html +=
+                "<tr><td class='name'>" +
+                escapeHtml(rec.name) +
+                "</td>" +
+                "<td class='unit'>" +
+                escapeHtml(rec.unit || "") +
+                "</td>" +
+                "<td class='addr'>" +
+                escapeHtml(rec.address || "") +
+                "</td></tr>";
+            }
+            html += "</tbody></table>";
+          } else {
+            for (const v of venues) {
+              const key = v.name;
+              const stalls = others.filter((o) => o.venue === key);
+              html += '<div class="venue-card">';
+              html +=
+                '<div class="venue-title">' + escapeHtml(v.name) + "</div>";
+              html +=
+                '<div class="venue-addr">' +
+                escapeHtml(v.address || "") +
+                " &middot; " +
+                escapeHtml(v.postal_code || "") +
+                "</div>";
+              if (stalls.length) {
+                html += '<div class="stalls">';
+                for (const s of stalls) {
+                  html +=
+                    '<div class="stall"><span>' +
+                    escapeHtml(s.name) +
+                    "</span> " +
+                    (s.unit
+                      ? '<span class="u">' + escapeHtml(s.unit) + "</span>"
+                      : "") +
+                    "</div>";
+                }
+                html += "</div>";
+              }
+              html += "</div>";
+            }
+            const ungrouped = others.filter(
+              (o) => !venues.some((v) => v.name === o.venue),
+            );
+            if (ungrouped.length) {
+              html +=
+                "<table><thead><tr><th>" +
+                tr("thName") +
+                "</th><th>" +
+                tr("thUnit") +
+                "</th><th>" +
+                tr("thAddress") +
+                "</th></tr></thead><tbody>";
+              for (const rec of ungrouped) {
+                html +=
+                  "<tr><td class='name'>" +
+                  escapeHtml(rec.name) +
+                  "</td>" +
+                  "<td class='unit'>" +
+                  escapeHtml(rec.unit || "") +
+                  "</td>" +
+                  "<td class='addr'>" +
+                  escapeHtml(rec.address || "") +
+                  "</td></tr>";
+              }
+              html += "</tbody></table>";
+            }
           }
           html += "</div>";
         }
-        html += "</div>";
+        box.innerHTML = html;
       }
-      const ungrouped = others.filter((o) => !venues.some((v) => v.name === o.venue));
-      if (ungrouped.length) {
-        html += '<table><thead><tr><th>' + tr("thName") + "</th><th>" + tr("thUnit") + "</th><th>" + tr("thAddress") + "</th></tr></thead><tbody>";
-        for (const rec of ungrouped) {
-          html += "<tr><td class='name'>" + escapeHtml(rec.name) + "</td>" +
-                  "<td class='unit'>" + escapeHtml(rec.unit || "") + "</td>" +
-                  "<td class='addr'>" + escapeHtml(rec.address || "") + "</td></tr>";
+
+      // ---------- client-side filtering (static mode) ----------
+      function matchLevel(text, q) {
+        const t = (text || "").toLowerCase();
+        if (!t || !q) return 0;
+        const re = new RegExp(
+          "(?<!\\w)" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?!\\w)",
+        );
+        if (re.test(t)) return 2;
+        if (t.includes(q)) return 1;
+        return 0;
+      }
+      function fieldMatches(text, q, wholeWord) {
+        const lvl = matchLevel(text, q);
+        return wholeWord ? lvl === 2 : lvl > 0;
+      }
+      function filterStatic(postal, name, address, wholeWord) {
+        const recs = STATIC_DATA || [];
+        const criteria = [];
+        if (postal) criteria.push((r) => r.postal_code === postal);
+        if (name) {
+          const q = name.toLowerCase();
+          criteria.push((r) => fieldMatches(r.name, q, wholeWord));
         }
-        html += "</tbody></table>";
+        if (address) {
+          const q = address.toLowerCase();
+          criteria.push((r) => fieldMatches(r.address, q, wholeWord));
+        }
+        if (!criteria.length) return [];
+        const direct = recs.filter((r) => criteria.every((c) => c(r)));
+
+        // Rank: whole-word name matches first, then substring name, then address.
+        const rank = (r) => {
+          const n = name ? matchLevel(r.name, name.toLowerCase()) : 0;
+          const a = address ? matchLevel(r.address, address.toLowerCase()) : 0;
+          return n * 10 + a;
+        };
+        direct.sort((x, y) => rank(y) - rank(x));
+
+        const stallsByKey = {};
+        for (const r of recs) {
+          if (r.kind === "stall" && r.venue) {
+            const key = r.postal_code + "|" + r.venue;
+            (stallsByKey[key] = stallsByKey[key] || []).push(r);
+          }
+        }
+        const results = [];
+        for (const r of direct) {
+          if (!results.includes(r)) results.push(r);
+          if (r.kind === "venue") {
+            for (const s of stallsByKey[r.postal_code + "|" + r.name] || []) {
+              if (!results.includes(s)) results.push(s);
+            }
+          }
+          if (results.length >= 500) break;
+        }
+        return results;
       }
-    }
-    html += "</div>";
-  }
-  box.innerHTML = html;
-}
 
-// ---------- client-side filtering (static mode) ----------
-function matchLevel(text, q) {
-  const t = (text || "").toLowerCase();
-  if (!t || !q) return 0;
-  const re = new RegExp("(?<!\\w)" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "(?!\\w)");
-  if (re.test(t)) return 2;
-  if (t.includes(q)) return 1;
-  return 0;
-}
-function fieldMatches(text, q, wholeWord) {
-  const lvl = matchLevel(text, q);
-  return wholeWord ? lvl === 2 : lvl > 0;
-}
-function filterStatic(postal, name, address, wholeWord) {
-  const recs = STATIC_DATA || [];
-  const criteria = [];
-  if (postal) criteria.push((r) => r.postal_code === postal);
-  if (name) { const q = name.toLowerCase(); criteria.push((r) => fieldMatches(r.name, q, wholeWord)); }
-  if (address) { const q = address.toLowerCase(); criteria.push((r) => fieldMatches(r.address, q, wholeWord)); }
-  if (!criteria.length) return [];
-  const direct = recs.filter((r) => criteria.every((c) => c(r)));
-
-  // Rank: whole-word name matches first, then substring name, then address.
-  const rank = (r) => {
-    const n = name ? matchLevel(r.name, name.toLowerCase()) : 0;
-    const a = address ? matchLevel(r.address, address.toLowerCase()) : 0;
-    return n * 10 + a;
-  };
-  direct.sort((x, y) => rank(y) - rank(x));
-
-  const stallsByKey = {};
-  for (const r of recs) {
-    if (r.kind === "stall" && r.venue) {
-      const key = r.postal_code + "|" + r.venue;
-      (stallsByKey[key] = stallsByKey[key] || []).push(r);
-    }
-  }
-  const results = [];
-  for (const r of direct) {
-    if (!results.includes(r)) results.push(r);
-    if (r.kind === "venue") {
-      for (const s of (stallsByKey[r.postal_code + "|" + r.name] || [])) {
-        if (!results.includes(s)) results.push(s);
+      async function search() {
+        const msg = $("searchMsg");
+        const btn = $("btnSearch");
+        const postal = $("fPostal").value.trim();
+        const name = $("fName").value.trim();
+        const address = $("fAddress").value.trim();
+        const wholeWord = $("wholeWordChk").checked;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>' + tr("searching");
+        clearMsg(msg);
+        try {
+          if (mode === "static") {
+            const results = filterStatic(postal, name, address, wholeWord);
+            renderResults({ count: results.length, results: results });
+          } else {
+            const params = new URLSearchParams();
+            if (postal) params.set("postal", postal);
+            if (name) params.set("name", name);
+            if (address) params.set("address", address);
+            if (wholeWord) params.set("whole_word", "1");
+            const r = await fetch("/api/search?" + params.toString());
+            const d = await r.json();
+            renderResults(d);
+          }
+        } catch (e) {
+          setMsg(msg, tr("searchFailed") + e.message, "err");
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = tr("search");
+        }
       }
-    }
-    if (results.length >= 500) break;
-  }
-  return results;
-}
 
-async function search() {
-  const msg = $("searchMsg");
-  const btn = $("btnSearch");
-  const postal = $("fPostal").value.trim();
-  const name = $("fName").value.trim();
-  const address = $("fAddress").value.trim();
-  const wholeWord = $("wholeWordChk").checked;
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>' + tr("searching");
-  clearMsg(msg);
-  try {
-    if (mode === "static") {
-      const results = filterStatic(postal, name, address, wholeWord);
-      renderResults({ count: results.length, results: results });
-    } else {
-      const params = new URLSearchParams();
-      if (postal) params.set("postal", postal);
-      if (name) params.set("name", name);
-      if (address) params.set("address", address);
-      if (wholeWord) params.set("whole_word", "1");
-      const r = await fetch("/api/search?" + params.toString());
-      const d = await r.json();
-      renderResults(d);
-    }
-  } catch (e) {
-    setMsg(msg, tr("searchFailed") + e.message, "err");
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = tr("search");
-  }
-}
-
-function clearFilters() {
-  $("fPostal").value = "";
-  $("fName").value = "";
-  $("fAddress").value = "";
-  $("wholeWordChk").checked = false;
-  clearMsg($("searchMsg"));
-  $("results").innerHTML = "";
-}
-
-// ---------- mode detection ----------
-async function detectMode() {
-  try {
-    const r = await fetch("/api/status", { cache: "no-store" });
-    // Some static hosts (via SPA fallbacks) return 200 with HTML for any path.
-    // Only treat it as API mode if the body is actually JSON.
-    const ct = (r.headers.get("content-type") || "").toLowerCase();
-    if (r.ok && ct.includes("application/json")) {
-      const body = await r.json();
-      if (body && typeof body === "object" && !Array.isArray(body)) {
-        mode = "api";
-        return;
+      function clearFilters() {
+        $("fPostal").value = "";
+        $("fName").value = "";
+        $("fAddress").value = "";
+        $("wholeWordChk").checked = false;
+        clearMsg($("searchMsg"));
+        $("results").innerHTML = "";
       }
-    }
-  } catch (e) { /* fall through to static */ }
-  mode = "static";
-  try {
-    const r = await fetch("dbs-paylah-merchants.json", { cache: "no-store" });
-    if (r.ok) {
-      const data = await r.json();
-      STATIC_DATA = Array.isArray(data) ? data : (data.records || []);
-    } else {
-      throw new Error("data file missing");
-    }
-  } catch (e) {
-    STATIC_DATA = null;
-  }
-  try {
-    const r = await fetch("index-meta.json", { cache: "no-store" });
-    if (r.ok) STATIC_META = await r.json();
-  } catch (e) { STATIC_META = null; }
-}
 
-$("btnReindex").addEventListener("click", reindex);
-$("btnClear").addEventListener("click", clearFilters);
-$("searchForm").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const postal = $("fPostal").value.trim();
-  const name = $("fName").value.trim();
-  const address = $("fAddress").value.trim();
-  if (!postal && !name && !address) {
-    setMsg($("searchMsg"), tr("needOne"), "err");
-    return;
-  }
-  if (postal && !/^\d{6}$/.test(postal)) {
-    setMsg($("searchMsg"), tr("postalErr"), "err");
-    return;
-  }
-  if ((name && name.length < 2) || (address && address.length < 2)) {
-    setMsg($("searchMsg"), tr("minLenErr"), "err");
-    return;
-  }
-  search();
-});
-$("srcUrl").textContent = srcUrl;
-$("srcUrl").style.color = "var(--muted)";
+      // ---------- mode detection ----------
+      async function detectMode() {
+        try {
+          const r = await fetch("/api/status", { cache: "no-store" });
+          // Some static hosts (via SPA fallbacks) return 200 with HTML for any path.
+          // Only treat it as API mode if the body is actually JSON.
+          const ct = (r.headers.get("content-type") || "").toLowerCase();
+          if (r.ok && ct.includes("application/json")) {
+            const body = await r.json();
+            if (body && typeof body === "object" && !Array.isArray(body)) {
+              mode = "api";
+              return;
+            }
+          }
+        } catch (e) {
+          /* fall through to static */
+        }
+        mode = "static";
+        try {
+          const r = await fetch("dbs-paylah-merchants.json", {
+            cache: "no-store",
+          });
+          if (r.ok) {
+            const data = await r.json();
+            STATIC_DATA = Array.isArray(data) ? data : data.records || [];
+          } else {
+            throw new Error("data file missing");
+          }
+        } catch (e) {
+          STATIC_DATA = null;
+        }
+        try {
+          const r = await fetch("index-meta.json", { cache: "no-store" });
+          if (r.ok) STATIC_META = await r.json();
+        } catch (e) {
+          STATIC_META = null;
+        }
+      }
 
-applyLang();
-applyTheme();
-detectMode().then(refreshStatus);
-</script>
-</body>
+      $("btnReindex").addEventListener("click", reindex);
+      $("btnClear").addEventListener("click", clearFilters);
+      $("searchForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const postal = $("fPostal").value.trim();
+        const name = $("fName").value.trim();
+        const address = $("fAddress").value.trim();
+        if (!postal && !name && !address) {
+          setMsg($("searchMsg"), tr("needOne"), "err");
+          return;
+        }
+        if (postal && !/^\d{6}$/.test(postal)) {
+          setMsg($("searchMsg"), tr("postalErr"), "err");
+          return;
+        }
+        if ((name && name.length < 2) || (address && address.length < 2)) {
+          setMsg($("searchMsg"), tr("minLenErr"), "err");
+          return;
+        }
+        search();
+      });
+      $("srcUrl").textContent = srcUrl;
+      $("srcUrl").style.color = "var(--muted)";
+
+      applyLang();
+      applyTheme();
+      detectMode().then(refreshStatus);
+    </script>
+  </body>
 </html>
