@@ -30,10 +30,19 @@ python3 parse_merchants.py --refresh
 python3 build_static.py
 ```
 
+The downloaded file is hashed before extraction. If its SHA-256 matches the current index, the expensive PDF parsing step is skipped.
+
 If DBS moves the PDF, supply the replacement HTTPS URL:
 
 ```bash
 python3 parse_merchants.py --refresh --url "https://example.com/new-merchants.pdf"
+python3 build_static.py
+```
+
+To index a PDF already on your computer, use `--local-pdf`. The source file is preserved; a cached copy is made only when its hash has changed:
+
+```bash
+python3 parse_merchants.py --local-pdf "/path/to/new-merchants.pdf"
 python3 build_static.py
 ```
 
@@ -52,6 +61,8 @@ git add dbs-paylah-merchants.json index_meta.json
 git commit -m "Refresh merchant index"
 git push origin main
 ```
+
+Every push to `main` triggers the **Deploy GitHub Pages** workflow. To redeploy without changing data, open the workflow in GitHub Actions and select **Run workflow** (`workflow_dispatch`).
 
 Do not commit `dbs-paylah-merchants.pdf`; it is intentionally ignored and can be downloaded again.
 

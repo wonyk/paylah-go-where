@@ -18,6 +18,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import sys
 import urllib.request
 from dataclasses import dataclass
@@ -93,6 +94,61 @@ def save_index_meta(pdf_path: str, record_count: int, source_url: str) -> None:
             "source_url": source_url,
             "force": True,
         }, target, ensure_ascii=False, indent=2)
+
+
+def load_index_meta() -> dict:
+    try:
+        with open(META_PATH, encoding="utf-8") as source:
+            return json.load(source)
+    except FileNotFoundError:
+        return {}
+
+
+def resolve_refresh_source(args, parser):
+    """Return candidate path, temporary path, and human-readable source."""
+    if not args.local_pdf:
+        temporary = args.pdf + ".download"
+        download_pdf(args.url, temporary)
+        return temporary, temporary, args.url
+
+    candidate = os.path.abspath(args.local_pdf)
+    if not os.path.isfile(candidate):
+        parser.error(f"local PDF not found: {args.local_pdf}")
+    return candidate, None, f"file:{os.path.basename(candidate)}"
+
+
+def validate_pdf(path, parser):
+    with open(path, "rb") as source:
+        if source.read(5) != b"%PDF-":
+            parser.error("selected source is not a PDF")
+
+
+def install_pdf(candidate, destination, move):
+    if os.path.abspath(candidate) == os.path.abspath(destination):
+        return
+    (os.replace if move else shutil.copyfile)(candidate, destination)
+
+
+def refresh_records(args, parser):
+    """Hash first; parse and replace caches only when the PDF changed."""
+    candidate, temporary, source_label = resolve_refresh_source(args, parser)
+    try:
+        validate_pdf(candidate, parser)
+        changed = (
+            sha256_file(candidate) != load_index_meta().get("pdf_hash")
+            or not os.path.exists(JSON_CACHE_PATH)
+        )
+        if not changed:
+            return load_records(args.pdf), False, source_label
+
+        install_pdf(candidate, args.pdf, move=bool(temporary))
+        temporary = None
+        records = load_records(args.pdf, refresh=True)
+        save_index_meta(args.pdf, len(records), source_label)
+        return records, True, source_label
+    finally:
+        if temporary and os.path.exists(temporary):
+            os.remove(temporary)
 
 
 def _clean(s):
@@ -423,18 +479,14 @@ def filter_records(records, postal=None, name=None, address=None, limit=500, con
     if not criteria:
         return []
 
-    def matches(r):
-        for field, value in criteria.items():
-            if field == "postal":
-                if r.postal_code != value:
-                    return False
-            elif field == "name":
-                if not _text_has(r.name, value, contains):
-                    return False
-            elif field == "address":
-                if not _text_has(r.address, value, contains):
-                    return False
-        return True
+    matchers = {
+        "postal": lambda record, value: record.postal_code == value,
+        "name": lambda record, value: _text_has(record.name, value, contains),
+        "address": lambda record, value: _text_has(record.address, value, contains),
+    }
+
+    def matches(record):
+        return all(matchers[field](record, value) for field, value in criteria.items())
 
     direct = [r for r in records if matches(r)]
     # Whole-word name matches first, then substring name, then address levels.
@@ -481,29 +533,28 @@ def main(argv=None):
     ap.add_argument("--query", "-q", help="quick search: any of postal, name, or address (case-insensitive)")
     ap.add_argument("--whole-word", action="store_true",
                     help="restrict to whole-word matches only (default is substring matching)")
-    ap.add_argument("--refresh", action="store_true", help="re-download and re-parse the PDF")
+    ap.add_argument("--refresh", action="store_true", help="download, hash-check, and re-parse the PDF when changed")
     ap.add_argument("--url", default=PDF_URL, help="PDF URL used with --refresh")
+    ap.add_argument("--local-pdf", help="local PDF to hash-check and index instead of downloading")
     ap.add_argument("--dump", choices=["json"], help="dump all parsed records as JSON instead of searching")
     ap.add_argument("--pdf", default=CACHE_PATH, help="path to the PDF (default: cached copy next to this script)")
     args = ap.parse_args(argv)
 
-    ensure_records_available()
-
-    if args.refresh:
-        if os.path.exists(args.pdf):
-            os.remove(args.pdf)
-        download_pdf(args.url, args.pdf)
-
-    records = load_records(args.pdf, refresh=args.refresh)
-    if args.refresh:
-        save_index_meta(args.pdf, len(records), args.url)
+    refresh_requested = args.refresh or bool(args.local_pdf)
+    if refresh_requested:
+        records, changed, source_label = refresh_records(args, ap)
+    else:
+        ensure_records_available()
+        records = load_records(args.pdf)
+        changed, source_label = False, args.url
 
     if args.dump == "json":
         print(json.dumps([r.__dict__ for r in records], ensure_ascii=False, indent=2))
         return
 
-    if args.refresh and not (args.query or args.postal or args.name or args.address):
-        print(f"Re-indexed {len(records)} records from {args.url}")
+    if refresh_requested and not (args.query or args.postal or args.name or args.address):
+        action = "Re-indexed" if changed else "PDF unchanged; kept"
+        print(f"{action} {len(records)} records from {source_label}")
         return
 
     if args.query:
